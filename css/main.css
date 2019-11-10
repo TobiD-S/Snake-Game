@@ -1,16 +1,13 @@
-html,
-body {
-    height: 100%;
+* {
     margin: 0;
+    padding: 0;
 }
 
 body {
-    background: #1E1F26;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    overflow: hidden;
 }
 
-canvas {
-    border: 1px solid #d0e1f9;
+body,
+#canvas {
+    background: #1E1F26;
 }

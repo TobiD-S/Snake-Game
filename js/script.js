@@ -1,125 +1,99 @@
-var canvas = document.getElementById('game');
-var context = canvas.getContext('2d');
-var grid = 16;
-var count = 0;
+const canvas = document.getElementById('canvas');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+const context = canvas.getContext('2d');
+const size = Math.round(canvas.width / 50);
+const xEnd = Math.round(canvas.width / size) * size;
+const yEnd = Math.round(canvas.height / size) * size;
+let directionLock = false;
 
-var snake = {
-    x: 160,
-    y: 160,
+// States
+const snake = [{ x: 0, y: 0 }];
+const apple = {};
+let direction = 'right';
+let speed = 200;
 
-    // snake velocity. moves one grid length every frame in either the x or y direction
-    dx: grid,
-    dy: 0,
-
-    // keep track of all grids the snake body occupies
-    cells: [],
-
-    // length of the snake. grows when eating an apple
-    maxCells: 4
-};
-var apple = {
-    x: 320,
-    y: 320
-};
-// get random whole numbers in a specific range
-// @see https://stackoverflow.com/a/1527820/2124254
-function getRandomInt(min, max) {
-    return Math.floor(Math.random() * (max - min)) + min;
+function random(min, max) {
+    return Math.random() * (max - min) + min;
 }
-// game loop
-function loop() {
-    requestAnimationFrame(loop);
-    // slow game loop to 15 fps instead of 60 (60/15 = 4)
-    if (++count < 4) {
-        return;
-    }
-    count = 0;
+
+function setApple() {
+    apple.x = Math.round(random(size, canvas.width - size) / size) * size;
+    apple.y = Math.round(random(size, canvas.height - size) / size) * size;
+}
+
+function draw() {
     context.clearRect(0, 0, canvas.width, canvas.height);
-    // move snake by it's velocity
-    snake.x += snake.dx;
-    snake.y += snake.dy;
-    // wrap snake position horizontally on edge of screen
-    if (snake.x < 0) {
-        snake.x = canvas.width - grid;
-    } else if (snake.x >= canvas.width) {
-        snake.x = 0;
-    }
 
-    // wrap snake position vertically on edge of screen
-    if (snake.y < 0) {
-        snake.y = canvas.height - grid;
-    } else if (snake.y >= canvas.height) {
-        snake.y = 0;
-    }
-    // keep track of where snake has been. front of the array is always the head
-    snake.cells.unshift({
-        x: snake.x,
-        y: snake.y
-    });
-    // remove cells as we move away from them
-    if (snake.cells.length > snake.maxCells) {
-        snake.cells.pop();
-    }
-    // draw apple
     context.fillStyle = '#FFC300';
-    context.fillRect(apple.x, apple.y, grid - 1, grid - 1);
-    // draw snake one cell at a time
-    context.fillStyle = '#fff';
-    snake.cells.forEach(function(cell, index) {
+    context.fillRect(apple.x, apple.y, size, size);
 
-        // drawing 1 px smaller than the grid creates a grid effect in the snake body so you can see how long it is
-        context.fillRect(cell.x, cell.y, grid - 1, grid - 1);
-        // snake ate apple
-        if (cell.x === apple.x && cell.y === apple.y) {
-            snake.maxCells++;
-            // canvas is 400x400 which is 25x25 grids 
-            apple.x = getRandomInt(0, 25) * grid;
-            apple.y = getRandomInt(0, 25) * grid;
-        }
-        // check collision with all cells after this one (modified bubble sort)
-        for (var i = index + 1; i < snake.cells.length; i++) {
+    for (let i = 0; i < snake.length; i += 1) {
+        const s = snake[i];
+        context.fillStyle = '#fff';
+        context.fillRect(s.x, s.y, size, size);
+    }
 
-            // snake occupies same space as a body part. reset game
-            if (cell.x === snake.cells[i].x && cell.y === snake.cells[i].y) {
-                snake.x = 160;
-                snake.y = 160;
-                snake.cells = [];
-                snake.maxCells = 4;
-                snake.dx = grid;
-                snake.dy = 0;
-                apple.x = getRandomInt(0, 25) * grid;
-                apple.y = getRandomInt(0, 25) * grid;
-            }
-        }
-    });
+    window.requestAnimationFrame(draw);
 }
-// listen to keyboard events to move the snake
-document.addEventListener('keydown', function(e) {
-    // prevent snake from backtracking on itself by checking that it's 
-    // not already moving on the same axis (pressing left while moving
-    // left won't do anything, and pressing right while moving left
-    // shouldn't let you collide with your own body)
 
-    // left arrow key
-    if (e.which === 37 && snake.dx === 0) {
-        snake.dx = -grid;
-        snake.dy = 0;
+function tick() {
+    for (let i = snake.length - 1; i >= 0; i--) {
+        if (i === 0 && snake[i].x === apple.x && snake[i].y === apple.y) {
+            snake.push({});
+            speed *= 0.99;
+            setApple();
+        }
+
+        const s = snake[i];
+        if (i == 0) {
+            switch (direction) {
+                case 'right':
+                    if (s.x > canvas.width) s.x = 0;
+                    else s.x += size;
+                    break;
+                case 'down':
+                    if (s.y > canvas.height) s.y = 0;
+                    else s.y += size;
+                    break;
+                case 'left':
+                    if (s.x < 0) s.x = xEnd;
+                    else s.x -= size;
+                    break;
+                case 'up':
+                    if (s.y < 0) s.y = yEnd;
+                    else s.y -= size;
+            }
+
+            for (let j = 1; j < snake.length; j += 1) {
+                if (snake[0].x === snake[j].x && snake[0].y === snake[j].y) {
+                    alert('GAME OVER');
+                    window.location.reload();
+                }
+            }
+
+        } else {
+            snake[i].x = snake[i - 1].x;
+            snake[i].y = snake[i - 1].y;
+        }
     }
-    // up arrow key
-    else if (e.which === 38 && snake.dy === 0) {
-        snake.dy = -grid;
-        snake.dx = 0;
+    window.setTimeout(tick, speed);
+    directionLock = false;
+}
+
+function onKeyDown(e) {
+    if (!directionLock) {
+        directionLock = true;
+        const newDirection = e.key.substr(5).toLowerCase();
+
+        if (direction === 'left' && newDirection !== 'right') direction = newDirection;
+        if (direction === 'up' && newDirection !== 'down') direction = newDirection;
+        if (direction === 'down' && newDirection !== 'up') direction = newDirection;
+        if (direction === 'right' && newDirection !== 'left') direction = newDirection;
     }
-    // right arrow key
-    else if (e.which === 39 && snake.dx === 0) {
-        snake.dx = grid;
-        snake.dy = 0;
-    }
-    // down arrow key
-    else if (e.which === 40 && snake.dy === 0) {
-        snake.dy = grid;
-        snake.dx = 0;
-    }
-});
-// start the game
-requestAnimationFrame(loop);
+}
+
+setApple();
+window.addEventListener('keydown', onKeyDown);
+window.setTimeout(tick, speed);
+window.requestAnimationFrame(draw);
